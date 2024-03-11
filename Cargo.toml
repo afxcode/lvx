@@ -14,8 +14,9 @@ serde = { version = "1.0.196", features = ["derive"] }
 serde_json = "1.0.114"
 rfd = "0.13"
 
-eframe = "0.26.2"
+eframe = { version = "0.26.2", features = ["wgpu"] }
 egui_extras = "0.26.2"
 epi = "0.17"
+wgpu = { version = "*", features = ["webgpu", "webgl"] }
 
 env_logger = "0.11"
