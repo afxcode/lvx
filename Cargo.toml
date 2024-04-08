@@ -1,7 +1,7 @@
 [package]
 name = "lvx"
 version = "0.1.0"
-authors = ["Anang Fauzi <anang312@gmail.com>"]
+authors = ["Anang Fauzi <afauzx@gmail.com>"]
 license = "MIT OR Apache-2.0"
 edition = "2021"
 rust-version = "1.72"
@@ -12,10 +12,10 @@ publish = false
 chrono = "0.4"
 serde = { version = "1.0.196", features = ["derive"] }
 serde_json = "1.0.114"
-rfd = "0.13"
+rfd = "0.14.1"
 
-eframe = { version = "0.26.2", features = ["wgpu"] }
-egui_extras = "0.26.2"
+eframe = { version = "0.27.2", features = ["wgpu"] }
+egui_extras = "0.27.2"
 epi = "0.17"
 wgpu = { version = "*", features = ["webgpu", "webgl"] }
 
