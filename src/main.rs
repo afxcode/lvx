@@ -41,6 +41,7 @@ struct App {
     filter_caller: String,
     search_founds: Vec<usize>,
     search_found_cursor: usize,
+    search_found_scroll_row: Option<usize>,
     search_level_debug: bool,
     search_level_info: bool,
     search_level_warning: bool,
@@ -69,6 +70,7 @@ impl Default for App {
             filter_caller: "".to_string(),
             search_founds: vec![],
             search_found_cursor: 0,
+            search_found_scroll_row: None,
             search_level_debug: false,
             search_level_info: false,
             search_level_warning: false,
@@ -270,9 +272,14 @@ impl eframe::App for App {
                                 .column(Column::initial(100.00).at_least(100.0))
                                 .column(Column::initial(100.00).at_least(100.0))
                                 .column(Column::remainder())
-                                .min_scrolled_height(0.0);
+                                .min_scrolled_height(0.0)
+                                .max_scroll_height(2000.0);
 
                             table = table.sense(egui::Sense::click());
+
+                            if let Some(row_index) = self.search_found_scroll_row.take() {
+                                table = table.scroll_to_row(row_index, None);
+                            }
 
                             table
                                 .header(20.0, |mut header| {
@@ -472,41 +479,39 @@ impl App {
     }
 
     fn search_first(&mut self) {
-        self.search_found_cursor = 0
+        self.search_found_cursor = 0;
+        if self.search_founds.is_empty() {
+            self.search_found_scroll_row = None;
+            return;
+        }
+        self.search_found_scroll_row = Some(self.search_founds[self.search_found_cursor]);
     }
 
     fn search_previous(&mut self) {
-        if self.search_founds.is_empty() {
-            self.search_found_cursor = 0;
+        if self.search_founds.is_empty() || self.search_found_cursor <= 0 {
+            self.search_found_scroll_row = None;
             return;
         }
-
-        if self.search_found_cursor <= 0 {
-            return;
-        }
-        self.search_found_cursor -= 1
+        self.search_found_cursor -= 1;
+        self.search_found_scroll_row = Some(self.search_founds[self.search_found_cursor]);
     }
 
     fn search_next(&mut self) {
-        if self.search_founds.is_empty() {
-            self.search_found_cursor = 0;
+        if self.search_founds.is_empty() || self.search_found_cursor >= self.search_founds.len() - 1 {
+            self.search_found_scroll_row = None;
             return;
         }
-
-        if self.search_found_cursor >= self.search_founds.len() - 1 {
-            return;
-        }
-
         self.search_found_cursor += 1;
+        self.search_found_scroll_row = Some(self.search_founds[self.search_found_cursor]);
     }
 
     fn search_last(&mut self) {
         if self.search_founds.is_empty() {
             self.search_found_cursor = 0;
-            return;
+            self.search_found_scroll_row = None;
         }
-
-        self.search_found_cursor = self.search_founds.len() - 1
+        self.search_found_cursor = self.search_founds.len() - 1;
+        self.search_found_scroll_row = Some(self.search_founds[self.search_found_cursor]);
     }
 }
 
