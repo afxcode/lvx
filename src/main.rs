@@ -39,6 +39,16 @@ struct App {
     filter_message: String,
     filter_payload: String,
     filter_caller: String,
+    search_founds: Vec<usize>,
+    search_found_cursor: usize,
+    search_level_debug: bool,
+    search_level_info: bool,
+    search_level_warning: bool,
+    search_level_error: bool,
+    search_level_panic: bool,
+    search_message: String,
+    search_payload: String,
+    search_caller: String,
     selection: std::collections::HashSet<usize>,
 }
 
@@ -57,6 +67,16 @@ impl Default for App {
             filter_message: "".to_string(),
             filter_payload: "".to_string(),
             filter_caller: "".to_string(),
+            search_founds: vec![],
+            search_found_cursor: 0,
+            search_level_debug: false,
+            search_level_info: false,
+            search_level_warning: false,
+            search_level_error: false,
+            search_level_panic: false,
+            search_message: "".to_string(),
+            search_payload: "".to_string(),
+            search_caller: "".to_string(),
             selection: Default::default(),
         }
     }
@@ -86,14 +106,21 @@ impl eframe::App for App {
 
             if let Some(_picked_path) = &self.picked_path {
                 ui.horizontal(|ui| {
-                    ui.menu_button("🔍 Filters", |ui| {
+                    ui.menu_button("🔍", |ui| {
                         ui.vertical(|ui| {
-                            ui.strong("Filter");
                             egui::Grid::new("filter_grid")
                                 .num_columns(2)
                                 .spacing([40.0, 4.0])
                                 .striped(true)
                                 .show(ui, |ui| {
+                                    ui.strong("Filter");
+                                    ui.horizontal(|ui| {
+                                        if ui.button("✖").on_hover_text("Reset").clicked() {
+                                            self.filter_reset();
+                                        }
+                                    });
+                                    ui.end_row();
+
                                     ui.label("Level");
                                     ui.horizontal(|ui| {
                                         if ui.selectable_label(self.filter_level_debug, "DEBUG").clicked() {
@@ -137,8 +164,78 @@ impl eframe::App for App {
                                     }
                                     ui.end_row();
                                 });
+
+                            ui.separator();
+                            egui::Grid::new("search_grid")
+                                .num_columns(2)
+                                .spacing([40.0, 4.0])
+                                .striped(true)
+                                .show(ui, |ui| {
+                                    ui.strong("Search");
+                                    ui.horizontal(|ui| {
+                                        if ui.button("🔝").on_hover_text("First").clicked() {
+                                            self.search_first();
+                                        }
+                                        if ui.button("⬅").on_hover_text("Previous").clicked() {
+                                            self.search_previous();
+                                        }
+                                        if ui.button("➡").on_hover_text("Next").clicked() {
+                                            self.search_next();
+                                        }
+                                        if ui.button("🔚").on_hover_text("Last").clicked() {
+                                            self.search_last();
+                                        }
+                                        if ui.button("✖").on_hover_text("Reset").clicked() {
+                                            self.search_reset();
+                                        }
+                                    });
+                                    ui.end_row();
+
+                                    ui.label("Level");
+                                    ui.horizontal(|ui| {
+                                        if ui.selectable_label(self.search_level_debug, "DEBUG").clicked() {
+                                            self.search_level_debug = !self.search_level_debug;
+                                            self.search();
+                                        }
+                                        if ui.selectable_label(self.search_level_info, "INFO").clicked() {
+                                            self.search_level_info = !self.search_level_info;
+                                            self.search();
+                                        }
+                                        if ui.selectable_label(self.search_level_warning, "WARNING").clicked() {
+                                            self.search_level_warning = !self.search_level_warning;
+                                            self.search();
+                                        }
+                                        if ui.selectable_label(self.search_level_error, "ERROR").clicked() {
+                                            self.search_level_error = !self.search_level_error;
+                                            self.search();
+                                        }
+                                        if ui.selectable_label(self.search_level_panic, "PANIC").clicked() {
+                                            self.search_level_panic = !self.search_level_panic;
+                                            self.search();
+                                        }
+                                    });
+                                    ui.end_row();
+
+                                    ui.label("Message");
+                                    if ui.text_edit_singleline(&mut self.search_message).changed() {
+                                        self.search();
+                                    }
+                                    ui.end_row();
+
+                                    ui.label("Payload");
+                                    if ui.text_edit_singleline(&mut self.search_payload).changed() {
+                                        self.search();
+                                    }
+                                    ui.end_row();
+
+                                    ui.label("Caller");
+                                    if ui.text_edit_singleline(&mut self.search_caller).changed() {
+                                        self.search();
+                                    }
+                                    ui.end_row();
+                                });
                         });
-                    });
+                    }).response.on_hover_text("Filter & Search");
 
                     ui.label("Filtered");
                     ui.monospace(self.filtered_logs.len().to_string());
@@ -198,29 +295,39 @@ impl eframe::App for App {
                                 .body(|body| {
                                     body.rows(text_height, self.filtered_logs.len(), |mut row| {
                                         let row_index = row.index();
-                                        row.set_selected(self.selection.contains(&row_index));
+                                        row.set_selected(self.selection.contains(&row_index) || self.index_at_search_found_cursor(row_index));
+
+                                        let found_on_search = self.search_founds.contains(&row_index);
 
                                         row.col(|ui| {
-                                            ui.label(self.filtered_logs[row_index].time.to_rfc3339());
+                                            let ts = self.filtered_logs[row_index].time.to_rfc3339();
+                                            if found_on_search { ui.strong(ts); } else { ui.label(ts); }
                                         });
                                         row.col(|ui| {
                                             let level = self.filtered_logs[row_index].level.clone();
+                                            let mut color = egui::Color32::from_rgb(80, 80, 80);
                                             match level {
-                                                Level::Unknown => { ui.colored_label(egui::Color32::from_rgb(80, 80, 80), level.to_string()); }
-                                                Level::Debug => { ui.colored_label(egui::Color32::from_rgb(10, 10, 240), level.to_string()); }
-                                                Level::Info => { ui.colored_label(egui::Color32::from_rgb(10, 240, 10), level.to_string()); }
-                                                Level::Warning => { ui.colored_label(egui::Color32::from_rgb(240, 240, 10), level.to_string()); }
-                                                Level::Error => { ui.colored_label(egui::Color32::from_rgb(240, 60, 10), level.to_string()); }
-                                                Level::Panic => { ui.colored_label(egui::Color32::from_rgb(240, 10, 10), level.to_string()); }
+                                                Level::Debug => { color = egui::Color32::from_rgb(10, 10, 240); }
+                                                Level::Info => { color = egui::Color32::from_rgb(10, 240, 10); }
+                                                Level::Warning => { color = egui::Color32::from_rgb(240, 240, 10); }
+                                                Level::Error => { color = egui::Color32::from_rgb(240, 60, 10); }
+                                                Level::Panic => { color = egui::Color32::from_rgb(240, 10, 10); }
+                                                _ => {}
                                             }
+                                            ui.colored_label(color, level.to_string());
                                         });
                                         row.col(|ui| {
-                                            ui.label(self.filtered_logs[row_index].message.to_string());
+                                            let msg = self.filtered_logs[row_index].message.to_string();
+                                            if found_on_search { ui.strong(msg); } else { ui.label(msg); }
                                         });
                                         row.col(|ui| {
-                                            ui.label(self.filtered_logs[row_index].payload.to_string());
+                                            let py = self.filtered_logs[row_index].payload.to_string();
+                                            if found_on_search { ui.strong(py); } else { ui.label(py); }
                                         });
-                                        row.col(|ui| { ui.label(self.filtered_logs[row_index].caller.to_string()); });
+                                        row.col(|ui| {
+                                            let ca = self.filtered_logs[row_index].caller.to_string();
+                                            if found_on_search { ui.strong(ca); } else { ui.label(ca); }
+                                        });
 
                                         self.toggle_row_selection(row_index, &row.response());
                                     });
@@ -275,7 +382,6 @@ impl App {
                 }
             }
             self.filter_reset();
-            self.filter();
         }
     }
 
@@ -295,6 +401,7 @@ impl App {
             })
             .cloned()
             .collect::<Vec<_>>();
+        self.search();
     }
 
     fn filter_reset(&mut self) {
@@ -306,6 +413,100 @@ impl App {
         self.filter_message = "".to_string();
         self.filter_payload = "".to_string();
         self.filter_caller = "".to_string();
+        self.filter();
+    }
+
+    fn search(&mut self) {
+        if !self.search_level_debug
+            && !self.search_level_info
+            && !self.search_level_warning
+            && !self.search_level_error
+            && !self.search_level_panic
+            && self.search_message.is_empty()
+            && self.search_payload.is_empty()
+            && self.search_caller.is_empty() {
+            self.search_reset();
+            return;
+        }
+
+        self.search_founds.clear();
+        for (index, row) in self.filtered_logs.iter().enumerate() {
+            let mut level = row.level == Level::Unknown;
+            level |= row.level == Level::Debug && self.search_level_debug;
+            level |= row.level == Level::Info && self.search_level_info;
+            level |= row.level == Level::Warning && self.search_level_warning;
+            level |= row.level == Level::Error && self.search_level_error;
+            level |= row.level == Level::Panic && self.search_level_panic;
+            let message = row.message.to_lowercase().contains(&self.search_message.to_lowercase());
+            let payload = row.payload.to_lowercase().contains(&self.search_payload.to_lowercase());
+            let caller = row.caller.to_lowercase().contains(&self.search_caller.to_lowercase());
+
+            if level && message && payload && caller {
+                self.search_founds.push(index)
+            }
+        }
+
+        self.search_found_cursor = 0
+    }
+
+    fn index_at_search_found_cursor(&mut self, index: usize) -> bool {
+        if self.search_founds.is_empty() {
+            return false;
+        }
+        if self.search_found_cursor > self.search_founds.len() - 1 {
+            return false;
+        }
+        return index == self.search_founds[self.search_found_cursor];
+    }
+
+    fn search_reset(&mut self) {
+        self.search_level_debug = false;
+        self.search_level_info = false;
+        self.search_level_warning = false;
+        self.search_level_error = false;
+        self.search_level_panic = false;
+        self.search_message = "".to_string();
+        self.search_payload = "".to_string();
+        self.search_caller = "".to_string();
+        self.search_founds.clear();
+    }
+
+    fn search_first(&mut self) {
+        self.search_found_cursor = 0
+    }
+
+    fn search_previous(&mut self) {
+        if self.search_founds.is_empty() {
+            self.search_found_cursor = 0;
+            return;
+        }
+
+        if self.search_found_cursor <= 0 {
+            return;
+        }
+        self.search_found_cursor -= 1
+    }
+
+    fn search_next(&mut self) {
+        if self.search_founds.is_empty() {
+            self.search_found_cursor = 0;
+            return;
+        }
+
+        if self.search_found_cursor >= self.search_founds.len() - 1 {
+            return;
+        }
+
+        self.search_found_cursor += 1;
+    }
+
+    fn search_last(&mut self) {
+        if self.search_founds.is_empty() {
+            self.search_found_cursor = 0;
+            return;
+        }
+
+        self.search_found_cursor = self.search_founds.len() - 1
     }
 }
 
