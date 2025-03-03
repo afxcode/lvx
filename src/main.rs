@@ -483,7 +483,7 @@ impl App {
             self.search_found_scroll_row = None;
             return;
         }
-        self.search_found_scroll_row = Some(self.search_founds[self.search_found_cursor]);
+        self.search_found_scroll_row = self.search_founds.get(self.search_found_cursor).copied();
     }
 
     fn search_previous(&mut self) {
@@ -492,7 +492,7 @@ impl App {
             return;
         }
         self.search_found_cursor -= 1;
-        self.search_found_scroll_row = Some(self.search_founds[self.search_found_cursor]);
+        self.search_found_scroll_row = self.search_founds.get(self.search_found_cursor).copied();
     }
 
     fn search_next(&mut self) {
@@ -501,7 +501,7 @@ impl App {
             return;
         }
         self.search_found_cursor += 1;
-        self.search_found_scroll_row = Some(self.search_founds[self.search_found_cursor]);
+        self.search_found_scroll_row = self.search_founds.get(self.search_found_cursor).copied();
     }
 
     fn search_last(&mut self) {
@@ -510,7 +510,7 @@ impl App {
             self.search_found_scroll_row = None;
         }
         self.search_found_cursor = self.search_founds.len() - 1;
-        self.search_found_scroll_row = Some(self.search_founds[self.search_found_cursor]);
+        self.search_found_scroll_row = self.search_founds.get(self.search_found_cursor).copied();
     }
 }
 
