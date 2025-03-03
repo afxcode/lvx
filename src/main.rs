@@ -11,8 +11,6 @@ use serde::{Deserialize, Serialize};
 fn main() -> Result<(), eframe::Error> {
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
     let options = eframe::NativeOptions {
-        follow_system_theme: false,
-        default_theme: eframe::Theme::Dark,
         viewport: egui::ViewportBuilder::default().with_inner_size([480.0, 480.0]),
         ..Default::default()
     };
@@ -22,7 +20,7 @@ fn main() -> Result<(), eframe::Error> {
         Box::new(|cc| {
             egui_extras::install_image_loaders(&cc.egui_ctx);
 
-            Box::<App>::default()
+            Ok(Box::<App>::default())
         }),
     )
 }
@@ -86,6 +84,7 @@ impl Default for App {
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        catppuccin_egui::set_theme(&ctx, catppuccin_egui::MACCHIATO);
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.with_layout(egui::Layout::left_to_right(egui::Align::Min), |ui| {
                 if ui.button("📂 Open").clicked() {
@@ -308,7 +307,7 @@ impl eframe::App for App {
 
                                         row.col(|ui| {
                                             let ts = self.filtered_logs[row_index].time.to_rfc3339();
-                                            if found_on_search { ui.strong(ts); } else { ui.label(ts); }
+                                            if found_on_search { ui.strong(ts); } else { ui.weak(ts); }
                                         });
                                         row.col(|ui| {
                                             let level = self.filtered_logs[row_index].level.clone();
@@ -325,15 +324,15 @@ impl eframe::App for App {
                                         });
                                         row.col(|ui| {
                                             let msg = self.filtered_logs[row_index].message.to_string();
-                                            if found_on_search { ui.strong(msg); } else { ui.label(msg); }
+                                            if found_on_search { ui.strong(msg); } else { ui.weak(msg); }
                                         });
                                         row.col(|ui| {
                                             let py = self.filtered_logs[row_index].payload.to_string();
-                                            if found_on_search { ui.strong(py); } else { ui.label(py); }
+                                            if found_on_search { ui.strong(py); } else { ui.weak(py); }
                                         });
                                         row.col(|ui| {
                                             let ca = self.filtered_logs[row_index].caller.to_string();
-                                            if found_on_search { ui.strong(ca); } else { ui.label(ca); }
+                                            if found_on_search { ui.strong(ca); } else { ui.weak(ca); }
                                         });
 
                                         self.toggle_row_selection(row_index, &row.response());
