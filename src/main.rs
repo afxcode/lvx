@@ -313,11 +313,11 @@ impl eframe::App for App {
                                             let level = self.filtered_logs[row_index].level.clone();
                                             let mut color = egui::Color32::from_rgb(80, 80, 80);
                                             match level {
-                                                Level::Debug => { color = egui::Color32::from_rgb(10, 10, 240); }
-                                                Level::Info => { color = egui::Color32::from_rgb(10, 240, 10); }
-                                                Level::Warning => { color = egui::Color32::from_rgb(240, 240, 10); }
-                                                Level::Error => { color = egui::Color32::from_rgb(240, 60, 10); }
-                                                Level::Panic => { color = egui::Color32::from_rgb(240, 10, 10); }
+                                                Level::Debug => { color = egui::Color32::from_rgb(138, 173, 244); }
+                                                Level::Info => { color = egui::Color32::from_rgb(139, 213, 202); }
+                                                Level::Warning => { color = egui::Color32::from_rgb(245, 169, 127); }
+                                                Level::Error => { color = egui::Color32::from_rgb(238, 153, 160); }
+                                                Level::Panic => { color = egui::Color32::from_rgb(237, 135, 150); }
                                                 _ => {}
                                             }
                                             ui.colored_label(color, level.to_string());
